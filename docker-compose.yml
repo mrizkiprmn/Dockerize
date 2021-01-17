@@ -1,0 +1,80 @@
+version: "3.7"
+services: 
+  postgres:
+      container_name: dockerize_postgres
+      image: postgres:latest
+      ports: 
+        - "2345:5432"
+      volumes: 
+        - ./pg-data:/var/lib/postgresql/data
+      networks: 
+        - netku
+      environment: 
+        - POSTGRES_USER=rizkipermana
+        - POSTGRES_PASSWORD=admin123
+        - POSTGRES_DB=prods
+
+  redis:
+      container_name: dockerize_redis
+      image: redis:alpine3.12
+      command: redis-server
+      environment: 
+        - REDIS_PORT=6379
+      ports:  
+        - "9736:6379"
+      networks: 
+        - netku
+      volumes: 
+        - /redis-data:/data
+
+  backend:
+      container_name: dockerize_backend
+      image: backend:express
+      ports: 
+          - "8282:8888"
+      env_file: 
+          - ./backend/.env
+      networks: 
+          - netku
+      depends_on: 
+          - postgres
+      deploy:
+        resources:
+          limits:
+            cpus: '0.001'
+            memory: 100m
+        reservations:
+            cpus: '0.0001'
+            memory: 50m
+
+  frontend:
+      container_name: dockerize_vue
+      image: frontend:vue
+      ports: 
+          - "8181:8080"
+      networks: 
+          - netku
+      env_file: 
+          - ./frontend/.env.local
+
+  nginx:
+      container_name: dockerize_nginx
+      image: nginx:stable-alpine
+      build: 
+        context: ./nginx
+      networks: 
+        - netku
+      ports: 
+        - "80:80"
+      depends_on: 
+        - backend
+        - frontend
+
+
+networks: 
+    netku:
+        driver: bridge
+
+volumes: 
+    pg-data:
+    redis-data:
