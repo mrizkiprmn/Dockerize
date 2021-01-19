@@ -1,78 +1,82 @@
 version: "3.7"
 services: 
   postgres:
-      container_name: dockerize_postgres
+      container_name: docker_postgres
       image: postgres:latest
       ports: 
-        - "2345:5432"
+        - "5432:5432"
       volumes: 
         - ./pg-data:/var/lib/postgresql/data
       networks: 
-        - netku
+        - netnet
       environment: 
         - POSTGRES_USER=rizkipermana
         - POSTGRES_PASSWORD=admin123
         - POSTGRES_DB=prods
 
-  redis:
-      container_name: dockerize_redis
+   pgadmin:
+     container_name: pgadmin
+     image: dpage/pgadmin4
+     ports:
+        - "6789:80"
+     environment:
+        PGADMIN_DEFAULT_EMAIL: admin@example.com
+        PGADMIN_DEFAULT_PASSWORD: root
+     restart: unless-stopped
+     networks:
+        - netnet
+     depends_on:
+        - postgres
+
+   redis:
+      container_name: docker_redis
       image: redis:alpine3.12
       command: redis-server
       environment: 
         - REDIS_PORT=6379
       ports:  
-        - "9736:6379"
+        - "6379:6379"
       networks: 
-        - netku
+        - netnet
       volumes: 
         - /redis-data:/data
 
   backend:
-      container_name: dockerize_backend
-      image: backend:express
+      image: backend:express7.0
       ports: 
-          - "8282:8888"
+          - "8282-8283:8888"
       env_file: 
           - ./backend/.env
-      networks: 
-          - netku
-      depends_on: 
-          - postgres
       deploy:
-        resources:
-          limits:
-            cpus: '0.001'
-            memory: 100m
-        reservations:
-            cpus: '0.0001'
-            memory: 50m
+       mode: replicated
+       replicas: 2
+       resources:
+         limits:
+           cpus: "0.50"
+           memory: 50M
+      networks: 
+          - netnet
+      depends_on: 
+          - pgadmin
+          - postgres
+          - redis
 
   frontend:
-      container_name: dockerize_vue
-      image: frontend:vue
+      container_name: docker_vue
+      image: frontend:vue2.0
       ports: 
           - "8181:8080"
       networks: 
-          - netku
+          - netnet
+      mem_limit: 300m
+      mem_reservation: 100m
+      cpus: '1.0'
       env_file: 
           - ./frontend/.env.local
 
-  nginx:
-      container_name: dockerize_nginx
-      image: nginx:stable-alpine
-      build: 
-        context: ./nginx
-      networks: 
-        - netku
-      ports: 
-        - "80:80"
-      depends_on: 
-        - backend
-        - frontend
-
 
 networks: 
-    netku:
+    netnet:
         driver: bridge
 
 volumes: 
